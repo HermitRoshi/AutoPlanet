@@ -1,10 +1,9 @@
 import re
 from pokemon import Pokemon
 from utils.mapManager import MapManager
+import xml.etree.ElementTree as ET
 
-from PySide2.QtWidgets import *
-from PySide2.QtCore import *
-from PySide2.QtGui import *
+from PySide2.QtCore import QObject, Signal
 
 class PlayerInfo(QObject):
 	stepsWalkedSignal = Signal()
@@ -27,18 +26,23 @@ class PlayerInfo(QObject):
 		self.__clan = ''
 		self.fishingLevel = 0
 		self.fishingExp = 0
+		self.miningLevel = 0
+		self.miningExp = 0
 		self.team = []
 		self.mount = ''
 		self.direction = 'down'
 		self.moveType = ''
 		self.fishing = 0
+		self.mining = False
 		self.moving = False
 		self.battle = False
+		self.busy = False
 		self.stepsWalked = 0
 		self.mapMovements = 0
 		self.movementSpeedMod = 0
 		self.movementSpeed = 0
 		self.activePokemon = 0
+		self.currentRock = ''
 
 		self.__mapManager = MapManager()
 		self.mapCollisions = [[]]
@@ -130,7 +134,12 @@ class PlayerInfo(QObject):
 
 		self.movementSpeed = 8 * self.movementSpeedMod
 		self.fishingLevel = int(segments[segment_num + 10])
-		self.fishingExp = int(segments[segment_num + 11])
+		self.fishingExp = int(segments[segment_num + 11])		
+
+		self.miningLevel = int(segments[segment_num + 47])
+		self.miningExp = int(segments[segment_num + 48])
+
+		self.activePokemon = self.getNextAlivePokemon()
 
 	def isMapExitTile(self):
 		for exit in self.__mapManager.exits:
@@ -174,16 +183,107 @@ class PlayerInfo(QObject):
 
 	def updateInventory(self, data):
 		if data is not None:
+			old_inventory = self.__inventory.copy()
+			new_items = dict()
 			self.__inventory = {}
 			self.__inventoryList = []
 			strings = data.replace('[','').replace("]]","").split('],')
 			for item in strings:
 				split_item = item.split(",")
-				self.addItemToInventory(split_item[0], int(split_item[1]))
+				name = split_item[0]
+				count = int(split_item[1])
+				self.addItemToInventory(name, count)
 
-	def activePokemonAlive(self):
-		if len(self.team) > 0:
-			return self.team[self.activePokemon].currentHealth > 1
+				if name in old_inventory:
+					if old_inventory[name] < count:
+						new_items[name] = count - old_inventory[name]
+				else:
+					new_items[name] = count
+
+
+
+	def updateInventoryXML(self, data):
+		if data is not None:
+			data = data.replace("<![CDATA[","").replace("]]","")
+			root = ET.fromstring(data)
+
+			items = root.findall('.//body/dataObj/obj/obj')
+			temp_items_array = [None] * len(items)
+
+			for item in items:
+			    slot = int(item.attrib['o'])
+			    item_vars = item.findall("var")
+			    count = int(item_vars[0].text)
+			    name = item_vars[1].text
+			    
+			    temp_items_array[slot] = [name, count]
+
+			old_inventory = self.__inventory.copy()
+			new_items = dict()
+
+			if None not in temp_items_array and len(temp_items_array) > 0:
+				self.__inventory = {}
+				self.__inventoryList = []
+
+				for item in temp_items_array:
+					item_name = item[0]
+					item_count = int(item[1])
+					self.addItemToInventory(item_name, item_count)
+
+					if item_name in old_inventory:
+						if old_inventory[item_name] < item_count:
+							new_items[item_name] = item_count - old_inventory[item_name]
+					else:
+						new_items[item_name] = item_count
+
+			data_vars = root.findall('.//body/dataObj/var')
+			temp_msg = None
+			for avar in data_vars:
+				if avar.attrib['n'] == "money":
+					self.money = int(avar.text)
+				if avar.attrib['n'] == "msg":
+					temp_msg = avar.text
+
+			return [temp_msg, new_items]
+
+		return [None, new_items]
+
+	def getBattleItems(self):
+		''' Returns a list of all items usable in battle.
+
+			Applies only to items in your inventory currently.
+		'''
+		usable_in_battle = ["Quick Ball", "Dive Ball", "Net Ball", "Nest Ball",
+							"Repeat Ball", "Fast Ball", "Moon Ball", "Lure Ball", 
+							"Level Ball", "Safari Ball", "Poke Ball (untradeable)", 
+							"Great Ball (untradeable)", "Ultra Ball (untradeable)", 
+							"Potion", "Super Potion", "Hyper Potion", "Poke Ball", 
+							"Great Ball", "Ultra Ball", "Master Ball", "Halloween Ball", 
+							"Halloween Candy", "Soda Pop", "Lemonade"]
+		battle_items = []
+
+		for item in self.__inventoryList:
+			if item in usable_in_battle:
+				battle_items.append(item)
+
+		return battle_items
+
+	def haveUsablePokemon(self):
+		for pokemon in self.team:
+			if pokemon.currentHealth > 0:
+				return True
+
+		return False
+	def getNextAlivePokemon(self):
+		for pokemon in range(len(self.team)):
+			if self.team[pokemon].currentHealth > 0:
+				return pokemon
+		return -1
+
+	def setActivePokemon(self):
+		if self.getNextAlivePokemon() != -1:
+			self.activePokemon = self.getNextAlivePokemon()
+			return True
 		else:
 			return False
 
@@ -248,27 +348,102 @@ class PlayerInfo(QObject):
 			# Probably index out of bounds so definitely not water
 			return False
 
+	def faceWater(self):
+		''' Faces user towards water.
+
+			If the user is already facing water nothing will change.
+		'''
+		if not self.isPlayerFacingWater():
+			if self.mapCollisions[self.__y-1][self.__x] == 2:
+				self.direction = "up"
+			elif self.mapCollisions[self.__y+1][self.__x] == 2:
+				self.direction = "down"
+			elif self.mapCollisions[self.__y][self.__x+1] == 2:
+				self.direction = "right"
+			else:
+				self.direction = "left"
+
+		return self.isPlayerFacingWater()
+
+	def isPlayerNearWater(self):
+		''' Returns true if player is near water.
+
+			Checks all four directions.
+		'''
+
+		if (self.mapCollisions[self.__y-1][self.__x] == 2 or
+			self.mapCollisions[self.__y+1][self.__x] == 2 or
+			self.mapCollisions[self.__y][self.__x+1] == 2 or
+			self.mapCollisions[self.__y][self.__x-1] == 2):
+			return True
+		return False
+
+	def isPlayerNearRock(self, rocks):
+		""" Check if the player is facing a mining rock.
+
+			Returns True if facing a mining rock.
+		"""
+		try:
+			if ((str(self.__x) + "," + str(self.__y-1)) in rocks or
+				(str(self.__x) + "," + str(self.__y+1)) in rocks or
+				(str(self.__x+1) + "," + str(self.__y)) in rocks or
+				(str(self.__x-1) + "," + str(self.__y)) in rocks):
+				return True
+
+			return False
+		except:
+			# Something went wrong, not near a rock for sure.
+			return False
+
+	def faceAvailableRock(self, rocks):
+		up = str(self.__x) + "," + str(self.__y-1)
+		down = str(self.__x) + "," + str(self.__y+1)
+		right = str(self.__x+1)+ "," + str(self.__y)
+		left = str(self.__x-1) + "," + str(self.__y)
+
+		if up in rocks and rocks[up][3] == 1:
+			self.direction = "up"
+			self.currentRock = up
+			return ["UP", self.__x, self.__y-1]
+
+		elif down in rocks and rocks[down][3] == 1:
+			self.direction = "down"
+			self.currentRock = down
+			return ["DOWN", self.__x, self.__y+1]
+
+		elif right in rocks and rocks[right][3] == 1:
+			self.direction = "right"
+			self.currentRock = right
+			return ["RIGHT", self.__x+1, self.__y]
+
+		elif left in rocks and rocks[left][3] == 1:
+			self.direction = "left"
+			self.currentRock = left
+			return ["LEFT", self.__x-1, self.__y]
+		else:
+			return ["NONE", 0, 0]
+
 	def moved(self, direction, bounded=False):
 		""" Attempt to move the player in a specified direction.
 
 			Returns boolean indicating whether the move was successful
 		"""
-		if direction == "up" and self.__isValidMove(self.__x, self.__y - 1, bounded):
+		if direction == "UP" and self.__isValidMove(self.__x, self.__y - 1, bounded):
 			self.__y = self.__y - 1
 			self.direction = "up"
 			self.__updatePlayerMovements()
 			return True
-		elif direction == "down" and self.__isValidMove(self.__x, self.__y + 1, bounded):
+		elif direction == "DOWN" and self.__isValidMove(self.__x, self.__y + 1, bounded):
 			self.__y = self.__y + 1
 			self.direction = "down"
 			self.__updatePlayerMovements()
 			return True
-		elif direction == "right" and self.__isValidMove(self.__x + 1, self.__y, bounded):
+		elif direction == "RIGHT" and self.__isValidMove(self.__x + 1, self.__y, bounded):
 			self.__x = self.__x + 1
 			self.direction = "right"
 			self.__updatePlayerMovements()
 			return True
-		elif direction == "left" and self.__isValidMove(self.__x - 1, self.__y, bounded):
+		elif direction == "LEFT" and self.__isValidMove(self.__x - 1, self.__y, bounded):
 			self.__x = self.__x - 1
 			self.direction = "left"
 			self.__updatePlayerMovements()
@@ -279,13 +454,13 @@ class PlayerInfo(QObject):
 
 	def directionOfTile(self, x, y):
 		if x == self.__x and self.__y - 1 == y:
-			return "up"
+			return "UP"
 		elif x == self.__x and self.__y + 1 == y:
-			return "down"
+			return "DOWN"
 		elif x == self.__x + 1 and self.__y == y:
-			return "right"
+			return "RIGHT"
 		elif x == self.__x - 1 and self.__y  == y:
-			return "left"
+			return "LEFT"
 
 		return None
 
@@ -309,6 +484,26 @@ class PlayerInfo(QObject):
 			self.stepsWalked = 0
 			self.stepsWalkedSignal.emit()
 
+	def getWalkableDirections(self, bounded):
+		""" Returns a list of walkable directions.
+
+			Checks each of the four directions and if they're walkable
+			adds them to the list. Returns the move list.
+		"""
+		moves = []
+		if self.__isValidMove(self.__x, self.__y - 1, bounded):
+			moves.append("UP")
+
+		if self.__isValidMove(self.__x, self.__y + 1, bounded):
+			moves.append("DOWN")
+
+		if self.__isValidMove(self.__x + 1, self.__y, bounded):
+			moves.append("RIGHT")
+
+		if self.__isValidMove(self.__x - 1, self.__y, bounded):
+			moves.append("LEFT")
+
+		return moves
 
 	def __isValidMove(self, y, x, bounded):
 		""" Validate if player can move to given coordinate
@@ -337,11 +532,33 @@ class PlayerInfo(QObject):
 
 		return valid
 
+	def getItem(self, index):
+		return self.__inventoryList[index]
+		
 	def getItemIndex(self, item):
 		if item in self.__inventoryList:
 			return self.__inventoryList.index(item)
 		else:
 			return -1
+
+	def getCatchingPokeball(self, rule_ball):
+		if rule_ball == "Any":
+			usable_balls = ["Quick Ball", "Dive Ball", "Net Ball", "Nest Ball",
+							"Repeat Ball", "Fast Ball", "Moon Ball", "Lure Ball", 
+							"Level Ball", "Safari Ball", "Poke Ball (untradeable)", 
+							"Great Ball (untradeable)", "Ultra Ball (untradeable)", 
+							"Poke Ball", "Great Ball", "Ultra Ball", "Halloween Ball"]
+			for item in self.__inventoryList:
+				if item in usable_balls:
+					return self.__inventoryList.index(item)
+
+			return -1
+		else:
+			ball_index =  self.getItemIndex(rule_ball)
+			if ball_index == -1:
+				return self.getItemIndex(rule_ball + " (untradeable)")
+
+			return ball_index
 
 	def getBestFishingRod(self):
 		rod = None
@@ -359,6 +576,26 @@ class PlayerInfo(QObject):
 			rod = "Steel Rod"
 
 		return rod
+
+	def getBestPickaxe(self):
+		pickaxe = None
+
+		if self.getItemIndex("Old Pickaxe") != -1:
+			pickaxe = "Old Pickaxe"
+
+		if self.miningLevel >= 5 and self.getItemIndex("Good Pickaxe") != -1:
+			pickaxe = "Good Pickaxe"
+
+		if self.miningLevel >= 20 and self.getItemIndex("Super Pickaxe") != -1:
+			pickaxe = "Super Pickaxe"
+
+		if self.miningLevel >= 50 and self.getItemIndex("Steel Pickaxe") != -1:
+			pickaxe = "Steel Pickaxe"
+
+		if self.miningLevel >= 100 and self.getItemIndex("Master Pickaxe") != -1:
+			pickaxe = "Master Pickaxe"
+
+		return pickaxe
 
 	def getBestPotion(self):
 		potion = None
@@ -378,6 +615,6 @@ class PlayerInfo(QObject):
 			if self.__inventory[item] <= 0:
 				self.__inventory.pop(item)
 				self.__inventoryList.remove(item)
-		else:
+		elif count > 0:
 			self.__inventory[item] = count
 			self.__inventoryList.append(item)

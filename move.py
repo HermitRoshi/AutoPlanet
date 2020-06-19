@@ -16,7 +16,7 @@ class Move():
 		self.__setup()
 
 	def __setup(self):
-		file = open('csv\\moves.csv')
+		file = open('./data/csv/moves.csv')
 		movesList = list(csv.DictReader(file, delimiter=','))
 
 		if self.maxpp is None:

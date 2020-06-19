@@ -8,10 +8,15 @@ from utils.constants import CONSTANTS
 
 class WebSession:
 
-	def __init__(self, sessionCookie, userAgent):
+	def __init__(self, sessionCookie, userAgent, proxy):
 
 		# Requests session
 		self.__session = requests.Session()
+
+		# Proxy configuration
+		if proxy[0] == "Enabled":
+			proxies = {'http': '{}://{}:{}'.format(proxy[1], proxy[2], proxy[3])}
+			self.__session.proxies.update(proxies)
 
 		# Save off session cookie in case we need it
 		self.__sessionCookie = sessionCookie

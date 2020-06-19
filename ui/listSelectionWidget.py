@@ -1,8 +1,12 @@
-from PySide2.QtWidgets import *
-from PySide2.QtCore import *
-from PySide2.QtGui import *
-
 import csv
+
+from PySide2.QtWidgets import (QWidget, 
+							   QVBoxLayout,
+							   QHBoxLayout,
+							   QLabel,
+							   QListWidget,
+							   QPushButton)
+from PySide2.QtCore import Signal, Qt
 
 class ListSelectionWidget(QWidget):
 	listChanges = Signal(object)
@@ -42,12 +46,13 @@ class ListSelectionWidget(QWidget):
 
 		# Load up pokemon csv here. To make this class more generic one
 		# can pass in a file path instead.
-		file = open('csv\\pokemon.csv')
+		file = open('./data/csv/pokemon.csv')
 		self.__pokemonList = list(csv.DictReader(file, delimiter=','))
 
 		# Fill up primary list. Make sure not to have double in secondary
 		for pokemon in self.__pokemonList:
-			name = pokemon['identifier'].replace("-", " ").title()
+			name = pokemon['identifier'].title()
+
 			if name not in secondaryList:
 				self.__primaryList.addItem(name)
 
@@ -87,7 +92,7 @@ class ListSelectionWidget(QWidget):
 		self.__primaryList.clear()
 		self.__secondaryList.clear()
 		for pokemon in self.__pokemonList:
-			name = pokemon['identifier'].replace("-", " ").title()
+			name = pokemon['identifier'].title()
 			self.__primaryList.addItem(name)
 		self.__sortLists()
 

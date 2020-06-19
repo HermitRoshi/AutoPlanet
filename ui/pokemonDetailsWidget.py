@@ -1,17 +1,19 @@
-from PySide2.QtWidgets import *
-from PySide2.QtCore import *
-from PySide2.QtGui import *
+from PySide2.QtWidgets import QDialog, QFormLayout, QWidget, QLabel, QPushButton, QLineEdit, QHBoxLayout
+from PySide2.QtCore import QSize, Signal
+from PySide2.QtGui import Qt, QImage, QPixmap
 
 from pokemon import Pokemon
+from functools import partial
 
 class PokemonDetailsWidget(QDialog):
-	def __init__(self, pokemon, parent=None):
+	reorderSignal = Signal(int, int)
+	def __init__(self, pokemon, widget_id, parent=None):
 		super(PokemonDetailsWidget, self).__init__(parent)
-
+		self.widget_id = widget_id
 		self.setAttribute(Qt.WA_DeleteOnClose)
 		
-		self.setStyleSheet("QPushButton:disabled {background-color: #b21f66; color: #FFFFFF; font-weight: bold;}" +
-						   "QLineEdit {background-color: #d1cebd; color: #424874; font-weight: bold; width: 100px; height: 20px;}")
+		self.setStyleSheet("QPushButton {background-color: #b21f66; color: #FFFFFF; font-weight: bold;}" +
+						   "QLineEdit {background-color: #d1cebd; color: #424874; font-weight: bold; width: 110px;}")
 		self.setWindowTitle(pokemon.name.title())
 		self.mainLayout = QFormLayout()
 		self.leftWidget = QWidget()
@@ -20,12 +22,13 @@ class PokemonDetailsWidget(QDialog):
 		self.statsLayout.setSpacing(1)
 		self.leftLayout = QFormLayout()
 		self.leftLayout.setSpacing(1)
+		self.slotWidget = QWidget()
+		self.slotLayout = QHBoxLayout()
 
 
 		self.imageLabel = QLabel()
-		self.imageLabel.setStyleSheet("border: 1px solid grey; background-color: white; inset grey;")
-		self.imageLabel.setFixedSize(QSize(200, 150))
-		self.image = QImage("./images/pokemon/" + str(pokemon.id) + ".png")
+		self.imageLabel.setFixedSize(QSize(200, 135))
+		self.image = QImage("./data/images/pokemon/" + str(pokemon.id) + ".png")
 		pixmap = QPixmap(self.image)
 		scaledPix = pixmap.scaled(self.imageLabel.size(), Qt.KeepAspectRatio, transformMode = Qt.SmoothTransformation)
 		self.imageLabel.setAlignment(Qt.AlignCenter)
@@ -116,7 +119,7 @@ class PokemonDetailsWidget(QDialog):
 		self.catcherField = QLineEdit()
 		self.catcherField.setAlignment(Qt.AlignRight)
 		self.catcherField.setReadOnly(True)
-		self.catcherField.setText(str(pokemon.catcher))
+		self.catcherField.setText("HIDDEN")
 		self.statsLayout.addRow(self.catcherLabel, self.catcherField)
 
 		self.hpLabel = QPushButton("Hp: ")
@@ -124,7 +127,7 @@ class PokemonDetailsWidget(QDialog):
 		self.hpField = QLineEdit()
 		self.hpField.setAlignment(Qt.AlignRight)
 		self.hpField.setReadOnly(True)
-		self.hpField.setText(str(pokemon.currentHealth) + "/" + str(pokemon.health))
+		self.hpField.setText(str(pokemon.currentHealth) + "/" + str(pokemon.health) + " IV:" + str(pokemon.healthIV) + " EV:" + str(pokemon.healthEV))
 		self.statsLayout.addRow(self.hpLabel, self.hpField)
 
 		self.expLabel = QPushButton("Exp: ")
@@ -175,8 +178,25 @@ class PokemonDetailsWidget(QDialog):
 		self.speedField.setText(str(pokemon.speed) + " IV:" + str(pokemon.speedIV) + " EV:" + str(pokemon.speedEV))
 		self.statsLayout.addRow(self.speedLabel, self.speedField)
 
+		if self.widget_id >= 0:
+			self.slotButtons = []
+			for button_index in range(6):
+				self.slotButtons.append(QPushButton(str(button_index + 1)))
+				self.slotButtons[button_index].setStyleSheet("background-color: #0a64a0; color: #FFFFFF; font-weight: bold; min-width: 45px")
+				self.slotButtons[button_index].clicked.connect(partial(self.__slotChange, button_index+1))
+				if button_index == self.widget_id:
+					self.slotButtons[button_index].setEnabled(False)
+				self.slotLayout.addWidget(self.slotButtons[button_index])
+
+			self.slotWidget.setLayout(self.slotLayout)
 
 		self.leftWidget.setLayout(self.leftLayout)
 		self.rightWidget.setLayout(self.statsLayout)
 		self.mainLayout.addRow(self.leftWidget, self.rightWidget)
+		self.mainLayout.addRow(self.slotWidget)
 		self.setLayout(self.mainLayout)
+
+	def __slotChange(self, slot):
+		self.reorderSignal.emit(self.widget_id, slot)
+		self.close()
+		

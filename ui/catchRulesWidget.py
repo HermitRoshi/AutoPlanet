@@ -1,6 +1,11 @@
-from PySide2.QtWidgets import *
-from PySide2.QtCore import *
-from PySide2.QtGui import *
+from PySide2.QtCore import Signal, Qt
+from PySide2.QtWidgets import (QWidget,
+							   QLabel,
+							   QFormLayout,
+							   QPushButton,
+							   QComboBox,
+							   QCheckBox,
+							   QLineEdit)
 
 import tomlkit
 import os
@@ -25,12 +30,13 @@ class CatchRulesWidget(QWidget):
 
 		self.__pokemonInput = QComboBox()
 		self.__stopBotCheck = QCheckBox("Stop Bot")
+		self.__syncCheck = QCheckBox("Synchronized")
 		self.__moveInput = QComboBox()
 		self.__statusInput = QComboBox()
 		self.__healthInput = QLineEdit()
 		self.__pokeballInput = QComboBox()
 
-		self.__pokeballInput.addItems(["Any", "Pokeball", "Great Ball", "Ultra Ball", "Safari Ball"])
+		self.__pokeballInput.addItems(["Any", "Poke Ball", "Great Ball", "Ultra Ball", "Safari Ball", "Level Ball", "Quick Ball"])
 		self.__pokemonInput.addItems(["Slot 1", "Slot 2", "Slot 3", "Slot 4", "Slot 5", "Slot 6"])
 		self.__statusInput.addItems(["None", "Paralysis", "Sleep", "Burn", "Freeze", "Poison"])
 		self.__moveInput.addItems(["Slot 1", "Slot 2", "Slot 3", "Slot 4"])
@@ -39,6 +45,7 @@ class CatchRulesWidget(QWidget):
 		if rule is not None:
 			self.__nameInput = QLineEdit(rule.name)
 			self.__stopBotCheck.setChecked(rule.stop)
+			self.__syncCheck.setChecked(rule.sync)
 			self.__healthInput.setText(str(rule.health))
 			self.__pokemonInput.setCurrentIndex(rule.pokemon)
 			self.__moveInput.setCurrentIndex(rule.move)
@@ -56,6 +63,7 @@ class CatchRulesWidget(QWidget):
 
 		self.__layout.addRow(self.__nameLabel, self.__nameInput)
 		self.__layout.addRow(self.__stopBotCheck)
+		self.__layout.addRow(self.__syncCheck)
 		self.__layout.addRow(self.__pokemonLabel, self.__pokemonInput)
 		self.__layout.addRow(self.__moveLabel, self.__moveInput)
 		self.__layout.addRow(self.__statusLabel, self.__statusInput)
@@ -89,6 +97,7 @@ class CatchRulesWidget(QWidget):
 		tomlDict["rule"] = dict()
 		tomlDict["rule"]["name"] = self.__nameInput.text()
 		tomlDict["rule"]["stop"] = self.__stopBotCheck.isChecked()
+		tomlDict["rule"]["sync"] = self.__syncCheck.isChecked()
 		tomlDict["rule"]["pokemon"] = int(self.__pokemonInput.currentText().split("Slot ")[1]) - 1
 		tomlDict["rule"]["move"] = int(self.__moveInput.currentText().split("Slot ")[1]) - 1
 		tomlDict["rule"]["status"] = self.__statusInput.currentText()

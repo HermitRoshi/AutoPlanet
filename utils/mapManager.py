@@ -57,3 +57,22 @@ class MapManager():
 			return len(self.collision) - 1
 		else:
 			return 0
+
+	def addRocks(self, rocks):
+		for rock in rocks:
+			if rock[3] == 0:
+				self.collision[rock[1]][rock[0]] = 107
+			elif rock[2] == "Red":
+				self.collision[rock[1]][rock[0]] = 100
+			elif rock[2] == "Blue":
+				self.collision[rock[1]][rock[0]] = 101
+			elif rock[2] == "Green":
+				self.collision[rock[1]][rock[0]] = 102
+			elif rock[2] == "Prism":
+				self.collision[rock[1]][rock[0]] = 103
+			elif rock[2] == "Pale":
+				self.collision[rock[1]][rock[0]] = 104
+			elif rock[2] == "Dark":
+				self.collision[rock[1]][rock[0]] = 105
+			elif rock[2] == "Rainbow":
+				self.collision[rock[1]][rock[0]] = 106

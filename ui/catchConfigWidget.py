@@ -1,6 +1,12 @@
-from PySide2.QtWidgets import *
-from PySide2.QtCore import *
-from PySide2.QtGui import *
+from PySide2.QtCore import Signal, Qt
+from PySide2.QtWidgets import (QWidget, 
+							   QHBoxLayout,
+							   QFormLayout, 
+							   QLabel, 
+							   QScrollArea, 
+							   QPushButton, 
+							   QListWidget, 
+							   QComboBox)
 
 from ui.catchRulesWidget import CatchRulesWidget
 from utils.catchRule import CatchRule
@@ -11,13 +17,14 @@ import glob
 
 class CatchConfigWidget(QWidget):
 	saveChanges = Signal(object)
-	def __init__(self, pokemonList, parent=None):
+	def __init__(self, pokemonList, configDict, parent=None):
 		super(CatchConfigWidget, self).__init__(parent)
 
 		self.setAttribute(Qt.WA_DeleteOnClose)
 		
 		self.setWindowTitle("Catch Config")
 		self.__ruleDict = dict()
+		self.__currentConfigDict = configDict
 		self.__pokeRuleMatchWidget = dict()
 
 		self.__mainLayout = QHBoxLayout()
@@ -51,6 +58,11 @@ class CatchConfigWidget(QWidget):
 		self.__leftLayout.addRow(self.__saveButton)
 		self.__leftWidget.setLayout(self.__leftLayout)
 
+		self.__ruleManageWidget = QWidget()
+		self.__ruleManageLayout = QHBoxLayout()
+		self.__ruleManageLayout.setMargin(0)
+		self.__ruleManageWidget.setLayout(self.__ruleManageLayout)
+
 		self.__rightWidget = QWidget()
 		self.__rightLayout = QFormLayout()
 		self.__ruleListWidget = QListWidget()
@@ -60,9 +72,14 @@ class CatchConfigWidget(QWidget):
 		self.__editRuleButton.clicked.connect(self.__editRuleClicked)
 		self.__deleteRuleButton = QPushButton("Delete Rule")
 		self.__deleteRuleButton.clicked.connect(self.__deleteRuleClicked)
+		self.__applyToAllButton = QPushButton("Apply To All")
+		self.__applyToAllButton.clicked.connect(self.__applyToAllClicked)
+		self.__ruleManageLayout.addWidget(self.__editRuleButton)
+		self.__ruleManageLayout.addWidget(self.__deleteRuleButton)
+		self.__ruleManageLayout.addWidget(self.__applyToAllButton)
 		self.__rightLayout.addRow(self.__ruleListWidget)
 		self.__rightLayout.addRow(self.__newRuleButton)
-		self.__rightLayout.addRow(self.__editRuleButton, self.__deleteRuleButton)
+		self.__rightLayout.addRow(self.__ruleManageWidget)
 		self.__rightWidget.setLayout(self.__rightLayout)
 
 		self.__mainLayout.addWidget(self.__leftWidget)
@@ -85,6 +102,9 @@ class CatchConfigWidget(QWidget):
 		for item in self.__pokeRuleMatchWidget:
 			self.__pokeRuleMatchWidget[item].clear()
 			self.__pokeRuleMatchWidget[item].addItems(ruleList)
+			if len(self.__currentConfigDict) != 0 and item in self.__currentConfigDict:
+				if self.__currentConfigDict[item].name in ruleList:
+					self.__pokeRuleMatchWidget[item].setCurrentIndex(ruleList.index(self.__currentConfigDict[item].name))
 
 	def __loadRuleConfigs(self):
 		self.__ruleDict = dict()
@@ -92,8 +112,10 @@ class CatchConfigWidget(QWidget):
 		for filename in glob.glob(os.path.join(path, '*.toml')):
 			file = open(filename, "r")
 			tomlDict = tomlkit.parse(file.read())
+
 			self.__ruleDict[tomlDict["rule"]["name"]] = CatchRule(tomlDict["rule"]["name"],
 																  tomlDict["rule"]["stop"],
+																  tomlDict["rule"].get("sync", False),
 																  tomlDict["rule"]["pokemon"],
 																  tomlDict["rule"]["move"],
 																  tomlDict["rule"]["status"],
@@ -116,6 +138,13 @@ class CatchConfigWidget(QWidget):
 			self.__ruleConfigWidget = CatchRulesWidget(self.__ruleDict[self.__ruleListWidget.currentItem().text()])
 			self.__ruleConfigWidget.saveChanges.connect(self.__update)
 			self.__ruleConfigWidget.show()
+
+	def __applyToAllClicked(self):
+		if self.__ruleListWidget.currentItem() is not None:
+			for pokemon in self.__pokeRuleMatchWidget:
+				rule_name = self.__ruleListWidget.currentItem().text()
+				rule_index = self.__pokeRuleMatchWidget[pokemon].findText(rule_name)
+				self.__pokeRuleMatchWidget[pokemon].setCurrentIndex(rule_index)
 
 	def __saveClicked(self):
 		if len(self.__ruleDict) == 0:

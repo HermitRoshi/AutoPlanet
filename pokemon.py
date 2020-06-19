@@ -1,5 +1,6 @@
 import math
 import csv
+import ast
 from move import Move
 from ability import Ability
 from type import Type
@@ -64,8 +65,8 @@ class Pokemon():
 class WildPokemon():
 
 	def __init__(self, dataString):
-		data = dataString.split('`')
-		data = data[4].split(",")
+		all_data = dataString.split('`')
+		data = all_data[4].split(",")
 		self.currentHp = int(data[0])
 		self.maxHp = int(data[1])
 		self.name = str(data[2])
@@ -79,7 +80,14 @@ class WildPokemon():
 		self.type = Type(int(data[10]))
 		self.type2 = Type(int(data[11]))
 
-		file = open('csv\\effect.csv')
+		# Breaking up the multiple arrays. Messy manual work. TODO
+		boost_data = all_data[14].replace("[[","[").replace("]]", "]").replace("],[", "], [").split(", ")
+		if boost_data[4] != "[NaN]":
+			self.sync = int(ast.literal_eval(boost_data[4])[0]) == 1
+		else:
+			self.sync = False
+
+		file = open('./data/csv/effect.csv')
 		reader = csv.DictReader(file, delimiter=',')
 		self.effectDict={}
 

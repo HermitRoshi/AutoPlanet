@@ -10,7 +10,7 @@ class Type():
 			self.__setup()
 
 	def __setup(self):
-		file = open('csv\\types.csv')
+		file = open('./data/csv/types.csv')
 		typeList = list(csv.DictReader(file, delimiter=','))
 
 		self.name = typeList[self.id - 1]['identifier'].replace("-", " ").title()

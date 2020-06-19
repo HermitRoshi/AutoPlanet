@@ -3,3 +3,4 @@ kg2 = "zzbysdasfsgdsgfadfhdfrsadfs4easdfasdadadsgtz5b2"
 version = "163"
 cf_clearance = ""
 user_agent = ""
+proxy = ["Disabled", "socks5", "104.248.63.15", "30588"]

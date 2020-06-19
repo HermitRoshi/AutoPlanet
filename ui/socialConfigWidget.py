@@ -1,6 +1,11 @@
-from PySide2.QtWidgets import *
-from PySide2.QtCore import *
-from PySide2.QtGui import *
+from PySide2.QtGui import Signal
+from PySide2.QtWidgets import (QWidget,
+							   QHBoxLayout, 
+							   QFormLayout, 
+							   QLabel, 
+							   QListWidget, 
+							   QPushButton)
+from PySide2.QtGui import Qt
 
 import tomlkit
 import os

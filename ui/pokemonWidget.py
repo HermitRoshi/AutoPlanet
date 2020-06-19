@@ -1,9 +1,13 @@
 import sys
 import math
 
-from PySide2.QtWidgets import *
-from PySide2.QtCore import *
-from PySide2.QtGui import *
+from PySide2.QtWidgets import (QWidget, 
+							   QFormLayout, 
+							   QProgressBar,
+							   QMenu,
+							   QAction)
+from PySide2.QtGui import Qt
+from PySide2.QtCore import Signal, QPoint
 
 from utils.constants import CONSTANTS
 from ui.pokemonIconWidget import PokemonIconWidget
@@ -11,9 +15,11 @@ from ui.pokemonDetailsWidget import PokemonDetailsWidget
 from pokemon import Pokemon
 
 class PokemonWidget(QWidget):
-	def __init__(self, parent):
+	reorderSignal = Signal(int, int)
+	removeItemSignal = Signal(int)
+	def __init__(self, widget_id, parent):
 		super(PokemonWidget, self).__init__(parent)
-		
+		self.widget_id = widget_id
 		self.setAttribute(Qt.WA_DeleteOnClose)
 
 		self.__pokemon = None
@@ -32,6 +38,9 @@ class PokemonWidget(QWidget):
 		self.__experience.setAlignment(Qt.AlignCenter)
 		self.__experience.setStyleSheet("QProgressBar::chunk {background: #ffa372;}")
 
+		self.setContextMenuPolicy(Qt.CustomContextMenu)
+
+		self.customContextMenuRequested.connect(self.widgetRightClicked)
 
 		self.__barsLayout.addRow(self.__health)
 		self.__barsLayout.addRow(self.__experience)
@@ -71,6 +80,23 @@ class PokemonWidget(QWidget):
 		self.__experience.setValue(pokemon.levelExperience)
 		self.update()
 
+	def __handleReorderSignal(self, move_from, move_to):
+		self.reorderSignal.emit(move_from, move_to)
+
 	def showDetails(self):
-		details = PokemonDetailsWidget(self.__pokemon, self)
+		details = PokemonDetailsWidget(self.__pokemon, self.widget_id, self)
+		details.reorderSignal.connect(self.__handleReorderSignal)
 		details.exec_()
+
+	def widgetRightClicked(self, QPos):
+		self.listMenu = QMenu()
+		removeItemAction = QAction("Remove Item", self)
+		removeItemAction.triggered.connect(self.menuItemClicked)
+		self.listMenu.addAction(removeItemAction)
+
+		parentPosition = self.mapToGlobal(QPoint(0, 0))        
+		self.listMenu.move(parentPosition + QPos)
+		self.listMenu.show() 
+
+	def menuItemClicked(self):
+		self.removeItemSignal.emit(self.widget_id)

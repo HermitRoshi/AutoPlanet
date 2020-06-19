@@ -52,6 +52,13 @@ class Message():
 		    if node.attrib['n'] == field:
 		    	return node.text
 
+	def getUserId(self):
+		if self.__action == "userGone":
+			root = ET.fromstring(self.__rawData)
+			return root.find("body//user").attrib['id']
+		else:
+			return -1
+
 	def getMessageType(self):
 		return self.__type
 

@@ -1,9 +1,13 @@
 import sys
 from utils.constants import CONSTANTS
 
-from PySide2.QtWidgets import *
-from PySide2.QtCore import *
-from PySide2.QtGui import *
+from PySide2.QtCore import Signal
+from PySide2.QtGui import QTextCursor
+from PySide2.QtWidgets import (QWidget,
+                               QTabWidget,
+                               QTextEdit,
+                               QLineEdit,
+                               QVBoxLayout)
 
 class ChatWidget(QWidget):
     sendMessage = Signal(str, str)
@@ -51,7 +55,7 @@ class ChatWidget(QWidget):
 
         self.__chatInput = QLineEdit()
         self.__chatInput.returnPressed.connect(self.__sendMessage)
-        self.__chatTabs.setMinimumSize(500,150)
+        self.__chatTabs.setMinimumSize(400,120)
         
         # Add tabs
         self.__chatTabs.addTab(self.__logTab, "Log")
@@ -84,12 +88,10 @@ class ChatWidget(QWidget):
         self.__localTabLayout.addWidget(self.__localChat)
         self.__localTab.setLayout(self.__localTabLayout)
 
-
         self.__nonEnglishTabLayout = QVBoxLayout()
         self.__nonEnglishTabLayout.setMargin(0)
         self.__nonEnglishTabLayout.addWidget(self.__nonEnglishChat)
         self.__nonEnglishTab.setLayout(self.__nonEnglishTabLayout)
-
 
         self.__clanTabLayout = QVBoxLayout()
         self.__clanTabLayout.setMargin(0)
@@ -106,7 +108,7 @@ class ChatWidget(QWidget):
         self.layout.addWidget(self.__chatInput)
         self.setLayout(self.layout)
 
-        self.setStyleSheet("QTextEdit {background: #f1f3f4;}")
+        #self.setStyleSheet("QTextEdit {background: #f1f3f4;}")
 
     def __sendMessage(self):
         text = self.__chatInput.text()
@@ -114,7 +116,6 @@ class ChatWidget(QWidget):
 
         if text[0] != "@":
             tab = self.__chatTabs.currentIndex()
-
             if tab == 0 or tab == 1:
                 text = "<g>" + text
             elif tab ==2:
@@ -122,9 +123,10 @@ class ChatWidget(QWidget):
             elif tab == 3:
                 text = "<l>" + text
             elif tab == 4:
-                text = "<f>" + text
+                text = "<n>" + text
             elif tab == 5:
-                text = "<c>" + text
+                self.sendMessage.emit("<cl>", text)
+                return
             else:
                 return
 
@@ -140,26 +142,51 @@ class ChatWidget(QWidget):
 
     def addLog(self, message):
         self.__logChat.append(message)
+        self.__logChat.moveCursor(QTextCursor.End)
         self.__logChat.ensureCursorVisible()
 
-    def addMessage(self, category, user, message):
+    def addMessage(self, user_type, category, user, message):
         completeMessage = "<b>" + user + "</b>" + ": " + message
+
+        font_color = "#FFFFFF";
+
+        if user_type == "<a>":
+            font_color = "#FF3737"
+        elif user_type == "<z>":
+            font_color = "#00FFFF"
+        elif user_type == "<x>":
+            font_color = "#00FF00"
+        elif user_type == "<m>":
+            font_color = "#00FF00"
+        elif user_type == "<p>":
+            font_color = "#FF9900"
+        elif user_type == "<s>":
+            font_color = "#B382C8"
+        elif user_type == "<g>":
+            font_color = "#FFCC00"
+
+        completeMessage = "<font color='{}'>{}</font>".format(font_color, completeMessage)
  
         if category == "<g>":
             self.__englishChat.append(completeMessage)
             self.__englishChat.ensureCursorVisible()
         elif category == "<l>":
             self.__localChat.append(completeMessage)
+            self.__localChat.moveCursor(QTextCursor.End)
             self.__localChat.ensureCursorVisible()
         elif category == "<t>":
             self.__tradingChat.append(completeMessage)
+            self.__tradingChat.moveCursor(QTextCursor.End)
             self.__tradingChat.ensureCursorVisible()
         elif category == "<n>":
             self.__nonEnglishChat.append(completeMessage)
+            self.__nonEnglishChat.moveCursor(QTextCursor.End)
             self.__nonEnglishChat.ensureCursorVisible()
-        elif category == "<c>":
+        elif category == "<cl>":
             self.__clanChat.append(completeMessage)
+            self.__clanChat.moveCursor(QTextCursor.End)
             self.__clanChat.ensureCursorVisible()
         elif category == "<f>":
             self.__pmChat.append(completeMessage)
+            self.__pmChat.moveCursor(QTextCursor.End)
             self.__pmChat.ensureCursorVisible()

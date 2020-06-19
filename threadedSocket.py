@@ -1,20 +1,20 @@
-import socket
+import socket # Python socket
+import socks  # Socket with proxy
 import time
 
 from queue import Queue, Empty
 from threading import Thread
 
-from PySide2.QtWidgets import *
-from PySide2.QtCore import *
-from PySide2.QtGui import *
+from PySide2.QtCore import QObject, Signal, QThread
 
 class ThreadedSocket(QThread):
 	receiveSignal = Signal(object)
 	timeoutSignal = Signal()
-	def __init__(self, ip, port):
+	def __init__(self, ip, port, proxy):
 		super(ThreadedSocket, self).__init__()
 		self.__ip = ip
 		self.__port = port
+		self.__proxy = proxy
 		self.__send_queue = Queue()
 		self.__connected = False
 		self.__shutdownCount = 0
@@ -25,7 +25,15 @@ class ThreadedSocket(QThread):
 			self.shutdown()
 
 		# Re-create the socket and connect it
-		self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		self.__socket = socks.socksocket(socket.AF_INET, socket.SOCK_STREAM)
+		if self.__proxy[0] == "Enabled":
+			if self.__proxy[1] == "http":
+				self.__socket.set_proxy(socks.HTTP, self.__proxy[2], int(self.__proxy[3]))
+			elif self.__proxy[1] == "socks4":
+				self.__socket.set_proxy(socks.SOCKS5, self.__proxy[2], int(self.__proxy[3]))
+			elif self.__proxy[1] == "socks5":
+				self.__socket.set_proxy(socks.SOCKS4, self.__proxy[2], int(self.__proxy[3]))
+
 		self.__socket.connect((self.__ip, self.__port))
 		self.__socket.settimeout(10)
 

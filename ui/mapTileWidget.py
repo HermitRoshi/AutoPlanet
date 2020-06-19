@@ -1,13 +1,18 @@
 import sys
 from enum import Enum
 
-from PySide2.QtWidgets import *
-from PySide2.QtCore import *
-from PySide2.QtGui import *
+from PySide2.QtWidgets import QWidget
+from PySide2.QtCore import Signal, QSize
+from PySide2.QtGui import (Qt, 
+                           QPen,
+                           QColor,
+                           QPainter,
+                           QPixmap,
+                           QBrush)
 
 from utils.constants import CONSTANTS
 
-COLOR_NO_MAP = QColor(64, 64, 64)
+COLOR_NO_MAP = QColor(45,63,81)
 COLOR_WALKABLE = QColor('#8aae92')
 COLOR_WATER = QColor('#beebe9')
 COLOR_BLOCKED = QColor('#6e5773')
@@ -21,10 +26,10 @@ class MapTileWidget(QWidget):
     select = Signal(int, int, bool)
     walk = Signal(int, int)
 
-    def __init__(self, x, y, type, *args, **kwargs):
+    def __init__(self, x, y, type, tile_size, *args, **kwargs):
         super(MapTileWidget, self).__init__(*args, **kwargs)
 
-        self.setFixedSize(QSize(30, 30))
+        self.setFixedSize(QSize(tile_size, tile_size))
 
         self.x = x
         self.y = y
@@ -32,6 +37,7 @@ class MapTileWidget(QWidget):
         self.type = type
         self.location = "outside"
         self.player = False
+        self.playerDirection = "down"
         self.selected = False
 
     def paintEvent(self, event):
@@ -101,11 +107,35 @@ class MapTileWidget(QWidget):
             painter.drawPixmap(rectangle, QPixmap(CONSTANTS.IMG_LEDGE_RIGHT))
         elif self.type == TileTypeEnum.LEDGE_LEFT.value:
             painter.drawPixmap(rectangle, QPixmap(CONSTANTS.IMG_LEDGE_LEFT))
+        elif self.type == TileTypeEnum.RED_ROCK.value:
+            painter.drawPixmap(rectangle, QPixmap(CONSTANTS.IMG_ROCK_RED))
+        elif self.type == TileTypeEnum.BLUE_ROCK.value:
+            painter.drawPixmap(rectangle, QPixmap(CONSTANTS.IMG_ROCK_BLUE))
+        elif self.type == TileTypeEnum.GREEN_ROCK.value:
+            painter.drawPixmap(rectangle, QPixmap(CONSTANTS.IMG_ROCK_GREEN))
+        elif self.type == TileTypeEnum.PRISM_ROCK.value:
+            painter.drawPixmap(rectangle, QPixmap(CONSTANTS.IMG_ROCK_PRISM))
+        elif self.type == TileTypeEnum.PALE_ROCK.value:
+            painter.drawPixmap(rectangle, QPixmap(CONSTANTS.IMG_ROCK_PALE))
+        elif self.type == TileTypeEnum.DARK_ROCK.value:
+            painter.drawPixmap(rectangle, QPixmap(CONSTANTS.IMG_ROCK_DARK))
+        elif self.type == TileTypeEnum.RAINBOW_ROCK.value:
+            painter.drawPixmap(rectangle, QPixmap(CONSTANTS.IMG_ROCK_RAINBOW))
+        elif self.type == TileTypeEnum.EMPTY_ROCK.value:
+            painter.drawPixmap(rectangle, QPixmap(CONSTANTS.IMG_ROCK_EMPTY))
 
         if self.selected:
             painter.drawPixmap(rectangle, QPixmap(CONSTANTS.IMG_POKEBALL))
         if self.player:
-            painter.drawPixmap(rectangle, QPixmap(CONSTANTS.IMG_PLAYER))
+            if self.playerDirection == "down":
+                painter.drawPixmap(rectangle, QPixmap(CONSTANTS.IMG_PLAYER_DOWN))
+            elif self.playerDirection == "up":
+                painter.drawPixmap(rectangle, QPixmap(CONSTANTS.IMG_PLAYER_UP))
+            elif self.playerDirection == "right":
+                painter.drawPixmap(rectangle, QPixmap(CONSTANTS.IMG_PLAYER_RIGHT))
+            elif self.playerDirection == "left":
+                painter.drawPixmap(rectangle, QPixmap(CONSTANTS.IMG_PLAYER_LEFT))
+
         painter.drawRect(rectangle)
         painter.end()
 
@@ -118,8 +148,9 @@ class MapTileWidget(QWidget):
     def setClickMode(self, mode):
         self.clickMode = mode
 
-    def setPlayer(self, player):
+    def setPlayer(self, player, direction="down"):
         self.player = player
+        self.playerDirection = direction
 
     def setCoords(self, x, y):
         self.x = x
@@ -160,3 +191,11 @@ class TileTypeEnum(Enum):
     LEDGE_RIGHT = 28
     NPC = 98
     EXIT = 99
+    RED_ROCK = 100
+    BLUE_ROCK = 101
+    GREEN_ROCK = 102
+    PRISM_ROCK = 103
+    PALE_ROCK = 104
+    DARK_ROCK = 105
+    RAINBOW_ROCK = 106
+    EMPTY_ROCK = 107

@@ -9,7 +9,7 @@ class Ability():
 		self.__setup(encoded)
 
 	def __setup(self, encoded):
-		file = open('csv\\abilities.csv')
+		file = open('./data/csv/abilities.csv')
 		abilityList = list(csv.DictReader(file, delimiter=','))
 
 		crypto_key = "asion1asfonapsfobq1n12iofrasnfra"
